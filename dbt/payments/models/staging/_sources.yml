@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: raw
+    database: PAYMENTS
+    schema: RAW
+    loaded_at_field: loaded_at
+    freshness:                        # alert if the stream stops arriving
+      warn_after: {count: 15, period: minute}
+      error_after: {count: 60, period: minute}
+    tables:
+      - name: card_transactions
+        identifier: CARD_TRANSACTIONS
+        description: "Valid events from Kafka, one JSON payload per row (VARIANT)."
+      - name: card_transactions_dlq
+        identifier: CARD_TRANSACTIONS_DLQ
+        description: "Dead letters: messages that broke the event contract, with the reasons."
+        freshness: null

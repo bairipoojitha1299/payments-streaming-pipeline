@@ -1,0 +1,10 @@
+# Airflow 2.10 (already ships the Snowflake connector) + the Kafka client,
+# and dbt-snowflake in its own virtualenv so its dependencies can't clash
+# with Airflow's pinned ones.
+FROM apache/airflow:2.10.5-python3.12
+
+# pinning apache-airflow stops pip from up/downgrading Airflow itself
+RUN pip install --no-cache-dir "apache-airflow==2.10.5" "confluent-kafka==2.6.*"
+
+RUN python -m venv /home/airflow/dbt_venv \
+ && /home/airflow/dbt_venv/bin/pip install --no-cache-dir "dbt-snowflake~=1.9.0"

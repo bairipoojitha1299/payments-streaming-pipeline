@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: mart_fraud_kpis_hourly
+    description: "Hourly volume, value and fraud KPIs."
+    columns:
+      - name: event_hour
+        data_tests: [unique, not_null]
+  - name: mart_category_risk
+    columns:
+      - name: category
+        data_tests: [unique, not_null]
+  - name: mart_card_alerts
+    description: "Streaming rule alerts with reasons and the confirmed outcome."
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: alert_reasons
+        data_tests: [not_null]
+  - name: mart_pipeline_health
+    description: "Per-batch row counts, rejection rate and end-to-end latency."
+    columns:
+      - name: source_file
+        data_tests: [unique, not_null]

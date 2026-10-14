@@ -1,0 +1,67 @@
+-- =====================================================================
+-- One-time Snowflake setup. Run it in a Snowsight worksheet as ACCOUNTADMIN.
+-- Creates a small auto-suspending warehouse, the PAYMENTS database,
+-- a least-privilege role and a service user that logs in with a key pair.
+-- =====================================================================
+USE ROLE ACCOUNTADMIN;
+
+-- Compute: X-Small, pauses after 60s idle so the trial credits last
+CREATE WAREHOUSE IF NOT EXISTS PIPELINE_WH
+  WAREHOUSE_SIZE = 'XSMALL'
+  AUTO_SUSPEND = 60
+  AUTO_RESUME = TRUE
+  INITIALLY_SUSPENDED = TRUE;
+
+-- Storage layers
+CREATE DATABASE IF NOT EXISTS PAYMENTS;
+CREATE SCHEMA IF NOT EXISTS PAYMENTS.RAW;        -- landed as-is (JSON in VARIANT)
+CREATE SCHEMA IF NOT EXISTS PAYMENTS.STAGING;    -- dbt: typed + deduplicated
+CREATE SCHEMA IF NOT EXISTS PAYMENTS.MARTS;      -- dbt: business tables
+
+-- Raw landing objects
+CREATE FILE FORMAT IF NOT EXISTS PAYMENTS.RAW.JSON_GZ
+  TYPE = JSON
+  COMPRESSION = GZIP;
+
+CREATE STAGE IF NOT EXISTS PAYMENTS.RAW.CARD_TXN_STAGE
+  FILE_FORMAT = PAYMENTS.RAW.JSON_GZ
+  COMMENT = 'Micro-batch files from the Kafka consumer';
+
+CREATE TABLE IF NOT EXISTS PAYMENTS.RAW.CARD_TRANSACTIONS (
+  payload          VARIANT,
+  source_file      STRING,
+  file_row_number  NUMBER,
+  loaded_at        TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+CREATE TABLE IF NOT EXISTS PAYMENTS.RAW.CARD_TRANSACTIONS_DLQ (
+  payload          VARIANT,
+  source_file      STRING,
+  file_row_number  NUMBER,
+  loaded_at        TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- Least-privilege role for the pipeline (loader + dbt)
+CREATE ROLE IF NOT EXISTS PIPELINE_ROLE;
+GRANT USAGE, OPERATE ON WAREHOUSE PIPELINE_WH TO ROLE PIPELINE_ROLE;
+GRANT USAGE ON DATABASE PAYMENTS TO ROLE PIPELINE_ROLE;
+GRANT ALL ON SCHEMA PAYMENTS.RAW TO ROLE PIPELINE_ROLE;
+GRANT ALL ON SCHEMA PAYMENTS.STAGING TO ROLE PIPELINE_ROLE;
+GRANT ALL ON SCHEMA PAYMENTS.MARTS TO ROLE PIPELINE_ROLE;
+GRANT ALL ON ALL TABLES IN SCHEMA PAYMENTS.RAW TO ROLE PIPELINE_ROLE;
+GRANT USAGE ON FILE FORMAT PAYMENTS.RAW.JSON_GZ TO ROLE PIPELINE_ROLE;
+GRANT READ, WRITE ON STAGE PAYMENTS.RAW.CARD_TXN_STAGE TO ROLE PIPELINE_ROLE;
+GRANT ROLE PIPELINE_ROLE TO ROLE SYSADMIN;
+
+-- Service user: key-pair login only (TYPE = SERVICE users cannot have passwords).
+-- After running this file, run the ALTER USER ... RSA_PUBLIC_KEY statement
+-- printed by scripts/generate_keypair.py.
+CREATE USER IF NOT EXISTS PIPELINE_SVC
+  TYPE = SERVICE
+  DEFAULT_ROLE = PIPELINE_ROLE
+  DEFAULT_WAREHOUSE = PIPELINE_WH
+  DEFAULT_NAMESPACE = PAYMENTS.RAW;
+GRANT ROLE PIPELINE_ROLE TO USER PIPELINE_SVC;
+
+-- Your account identifier for .env (SNOWFLAKE_ACCOUNT), e.g. ABCDEFG-XY12345
+SELECT CURRENT_ORGANIZATION_NAME() || '-' || CURRENT_ACCOUNT_NAME() AS snowflake_account;

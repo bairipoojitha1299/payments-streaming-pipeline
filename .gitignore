@@ -1,0 +1,16 @@
+# secrets
+.env
+keys/*
+!keys/.gitkeep
+
+# landed micro-batches (data, not code)
+data/landing/*
+!data/landing/.gitkeep
+
+# dbt / python build output
+dbt/payments/target/
+dbt/payments/logs/
+logs/
+__pycache__/
+.pytest_cache/
+.venv/

@@ -1,0 +1,14 @@
+# Credentials come from environment variables (.env) - nothing secret in git.
+payments:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', 'not-set') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', 'PIPELINE_SVC') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH', '/opt/airflow/keys/rsa_key.p8') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'PIPELINE_ROLE') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'PIPELINE_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'PAYMENTS') }}"
+      schema: staging
+      threads: 4

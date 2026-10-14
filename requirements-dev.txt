@@ -1,0 +1,4 @@
+confluent-kafka==2.6.*
+snowflake-connector-python==3.12.*
+dbt-snowflake~=1.9.0
+pytest>=8.0
