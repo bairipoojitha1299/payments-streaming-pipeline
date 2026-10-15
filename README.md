@@ -42,6 +42,24 @@ flowchart LR
 
 **Airflow DAG `payments_streaming`:** `consume_kafka_batch → load_to_snowflake → dbt_source_freshness → dbt_build`
 
+## 📸 A real run
+
+The DAG running on Docker Desktop against a Snowflake trial account. All four tasks succeeded on every scheduled run:
+
+![Airflow DAG run](docs/images/airflow_graph.png)
+
+The first three micro-batches:
+
+| Batch (UTC) | Valid events → Snowflake | Rejected → dead-letter queue |
+|---|---:|---:|
+| 23:08 | 6,852 | 67 |
+| 23:10 | 1,173 | 11 |
+| 23:12 | 1,350 | 13 |
+
+- **9,375 events loaded**, and **91 malformed messages (~1%) quarantined** with their reasons instead of breaking the load.
+- `dbt build` passed: **6 models built, 16 data tests passed**, including the proof that duplicates were removed.
+- `dbt source freshness` passed: the newest data was **11 seconds old** when the check ran.
+
 ## 🛡️ How it handles real-world stream problems
 
 | Problem | What the pipeline does |
